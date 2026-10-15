@@ -42,7 +42,7 @@ Table Department {
 Table Position {
   id uuid [pk, not null]
   name varchar [not null]
-  salary decimal(15,2) [not null]
+  salary decimal(15,2) [not null, note: 'Salary per collected stardust unit']
   description varchar
 }
 
