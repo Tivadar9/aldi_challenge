@@ -61,4 +61,16 @@ cds watch
 
 The default CAP development URL is <http://localhost:4004>.
 
-Local database configuration, authentication setup, and test instructions will be documented as they are implemented.
+Local database configuration and authentication setup will be documented as they are implemented.
+
+## Database integration tests
+
+Run the complete suite from the project root:
+
+```bash
+npm test
+```
+
+The suite uses Node's built-in test runner and the installed CAP database APIs;
+no additional test libraries, HTTP service, or running `cds watch` process are needed.
+The current dependencies require Node.js 22 or later.
