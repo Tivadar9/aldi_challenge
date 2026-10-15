@@ -1,0 +1,66 @@
+
+Project GalacticSpacefarer {
+  database_type: 'SQLite'
+  Note: 'Galactic Spacefarer CAP assessment - conceptual data model'
+}
+
+// Navigation skill: CDS integer-backed enum.
+// DBML represents the named values, with numeric mappings in notes.
+Enum NavigationSkill {
+  BEGINNER [note: '0']
+  INTERMEDIATE [note: '1']
+  EXPERT [note: '2']
+  MASTER [note: '3']
+}
+
+Enum SuitColor {
+  RED
+  BLUE
+  GREEN
+  BLACK
+  WHITE
+  SILVER
+  GOLD
+  PURPLE
+  ORANGE
+}
+
+Table Planet {
+  id uuid [pk, not null]
+  name varchar [not null]
+  code varchar [not null, unique, note: 'Stable planet identifier']
+  description varchar
+}
+
+Table Department {
+  id uuid [pk, not null]
+  name varchar [not null]
+  hqPlanetId uuid [not null, ref: > Planet.id]
+  description varchar
+}
+
+Table Position {
+  id uuid [pk, not null]
+  name varchar [not null]
+  salary decimal(15,2) [not null]
+  description varchar
+}
+
+Table Spacefarer {
+  id uuid [pk, not null]
+  name varchar [not null]
+  email varchar [not null, unique]
+  stardust int [not null, default: 0, note: 'Nonnegative quantity; display with S suffix']
+  navigationSkill NavigationSkill [not null, default: 'BEGINNER', note: 'CDS numeric mappings: BEGINNER=0, INTERMEDIATE=1, EXPERT=2, MASTER=3']
+  suitColor SuitColor [not null]
+  originPlanetId uuid [not null, ref: > Planet.id]
+  departmentId uuid [not null, ref: > Department.id]
+  positionId uuid [not null, ref: > Position.id]
+}
+
+TableGroup GalacticDomain {
+  Planet
+  Department
+  Position
+  Spacefarer
+}
