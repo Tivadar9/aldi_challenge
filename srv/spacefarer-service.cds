@@ -1,5 +1,6 @@
 using { galactic.spacefarer as domain } from '../db/schema';
 
+@requires: 'authenticated-user'
 service SpacefarerService {
   entity Spacefarers as projection on domain.Spacefarer;
 

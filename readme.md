@@ -52,18 +52,58 @@ Directories will be populated as the project progresses.
 - Visual Studio Code (recommended)
 - SAP CDS and SAP Fiori Tools extensions (recommended)
 
-Once the CAP project has been initialized, install dependencies and start the development server:
+Install the locked dependencies and start the development server:
 
 ```bash
-npm install
-cds watch
+npm ci
+npm run watch
 ```
 
 The default CAP development URL is <http://localhost:4004>.
 
-Local database configuration and authentication setup will be documented as they are implemented.
+### Local authentication
 
-## Database integration tests
+`SpacefarerService` requires CAP's `authenticated-user` role for the entire
+service, including its metadata and entities. Local development uses CAP's
+[supported mocked authentication](https://cap.cloud.sap/docs/node.js/authentication)
+with HTTP Basic authentication, configured only in the `[development]` profile
+in `package.json`. Both users have the regular `SpacefarerUser` role; neither
+has an administrator role. CAP's other built-in mock users and wildcard login
+are disabled.
+
+With the development server running, use these requests (on Windows, use
+`curl.exe` to avoid PowerShell's `curl` alias):
+
+```bash
+curl --user alice:alice-dev http://localhost:4004/odata/v4/spacefarer/Planets
+curl --user bob:bob-dev http://localhost:4004/odata/v4/spacefarer/Spacefarers
+# No credentials: HTTP 401 with a Basic authentication challenge.
+curl -i http://localhost:4004/odata/v4/spacefarer/Planets
+# Wrong password: HTTP 401.
+curl -i --user alice:wrong http://localhost:4004/odata/v4/spacefarer/Planets
+```
+
+In Postman or another API client, select **Basic Auth** and enter the user ID
+and development password above. Browsers may cache Basic credentials; use a
+separate private session when switching users.
+
+These public mock passwords are development fixtures, **not production
+credentials**. Mock authentication simulates users locally without validating
+tokens from an identity provider. The production profile retains CAP's default
+`jwt` strategy and contains no development users or passwords. A production
+deployment still needs a configured identity provider (for example SAP Cloud
+Identity Services or XSUAA), the appropriate CAP authentication integration,
+and trusted role/planet claims. No identity provider or deployment
+infrastructure is provisioned by this task.
+
+Planet-based record filtering is not implemented yet: both users can currently
+see records from all planets. `SpacefarerUser` is assigned to prepare for later
+authorization work; this task's service access requirement is authentication.
+
+Configuration was verified with Node.js 24.21.0, `@sap/cds` 10.1.1,
+`@sap/cds-dk` 10.1.0, and `@cap-js/sqlite` 3.1.2. No dependencies were added.
+
+## Automated tests
 
 Run the complete suite from the project root:
 
@@ -71,6 +111,12 @@ Run the complete suite from the project root:
 npm test
 ```
 
-The suite uses Node's built-in test runner and the installed CAP database APIs;
-no additional test libraries, HTTP service, or running `cds watch` process are needed.
+The suite uses Node's built-in test runner and the installed CAP APIs; no
+additional test libraries or running `cds watch` process are needed. Database
+tests use isolated in-memory SQLite connections. Authentication tests start a
+temporary CAP HTTP server on an available port with seeded in-memory SQLite,
+check access for both users, inspect their actual CAP request contexts, reject
+anonymous/invalid logins, verify that client parameters and headers cannot
+override identity, and check that production configuration excludes mock users.
+No diagnostic identity endpoint is exposed by the application.
 The current dependencies require Node.js 22 or later.
