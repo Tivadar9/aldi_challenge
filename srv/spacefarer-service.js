@@ -95,25 +95,33 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
       // Only handle navigation originating from Spacefarers.
       if (sourceName !== Spacefarers.name) return;
 
-      // CAP exposes entity keys from the request URL.
-      const spacefarerId = req.params?.[0]?.ID;
+      // Restrict the source before navigation and aggregation. CAP may omit
+      // req.params for nested SELECTs and concat branches.
+      const source =
+        typeof firstSegment === "string"
+          ? { id: firstSegment }
+          : { ...firstSegment };
+      const planetFilter = [
+        { ref: ["originPlanet_ID"] },
+        "=",
+        { val: req.user.attr.planet },
+      ];
+      source.where = source.where?.length
+        ? [{ xpr: source.where }, "and", { xpr: planetFilter }]
+        : planetFilter;
+      ref[0] = source;
 
-      // Do not allow unrecognized navigation shapes.
-      if (typeof spacefarerId !== "string") {
-        return req.reject(403, "Unsupported Spacefarer navigation");
+      // Preserve 404 responses for ordinary keyed navigation. Ownership is
+      // enforced by the source filter even when URL params are unavailable.
+      if (typeof req.params?.[0]?.ID === "string") {
+        const ownedSpacefarer = await cds.tx(req).run(
+          cds.ql.SELECT.one.from({ ref: [source] }).columns("ID"),
+        );
+
+        if (!ownedSpacefarer) {
+          return req.reject(404, "Spacefarer not found");
+        }
       }
-
-      // Verify ownership of the source Spacefarer.
-      const ownedSpacefarer = await cds.tx(req).run(
-        SELECT.one.from(Spacefarers).columns("ID").where({
-          ID: spacefarerId,
-          originPlanet_ID: req.user.attr.planet,
-        }),
-      );
-
-      if (!ownedSpacefarer) {
-        return req.reject(404, "Spacefarer not found");
-      } // Ownership verified. Let CAP process the original query.
     });
 
     await super.init();

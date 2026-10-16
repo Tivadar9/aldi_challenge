@@ -49,6 +49,6 @@ entity Spacefarer : cuid {
   trialTimeMinutes : Integer @assert.range: [10, 60] @readonly;
   suitColor       : SuitColor not null @mandatory @assert.range;
   originPlanet    : Association to one Planet not null @mandatory;
-  department      : Association to one Department not null @mandatory;
-  position        : Association to one Position not null @mandatory;
+  department      : Association to one Department not null @mandatory @assert.target;
+  position        : Association to one Position not null @mandatory @assert.target;
 }

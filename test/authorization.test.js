@@ -9,6 +9,7 @@ const { SELECT, INSERT, DELETE } = cds.ql;
 describe("Spacefarer planet authorization", { concurrency: false }, () => {
   let server;
   let base;
+  let aggregateBranches;
 
   const ns = "galactic.spacefarer.";
 
@@ -145,9 +146,18 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
     });
 
     base = `http://127.0.0.1:${server.address().port}/odata/v4/spacefarer`;
+
+    // Inspect both concat branches; CAP serializes to-one navigation as a
+    // single entity even when the service processes multiple query results.
+    cds.services.SpacefarerService.after("READ", (result, req) => {
+      if (req.query?.SELECT?.columns?.some((column) => column.as === "n")) {
+        aggregateBranches.push(...result);
+      }
+    });
   });
 
   beforeEach(async () => {
+    aggregateBranches = [];
     trial.runTrial.mock.resetCalls();
     await cds.db.tx(async (tx) => {
       // Delete in foreign-key dependency order.
@@ -350,6 +360,86 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
     );
 
     assertDenied(foreignExpanded, 404);
+  });
+
+  for (const { apply, field, branchCount } of [
+    {
+      apply: "aggregate($count as n)/aggregate(n with sum as total)",
+      field: "total",
+    },
+    {
+      apply: "aggregate($count as n)/aggregate(n with sum as total)/aggregate(total with sum as finalTotal)",
+      field: "finalTotal",
+    },
+    {
+      apply: "concat(aggregate($count as n),aggregate($count as n))",
+      field: "n",
+      branchCount: 2,
+    },
+  ]) {
+    it(`isolates navigation aggregates for both users: ${apply}`, async () => {
+      for (const [user, other] of [["alice", "bob"], ["bob", "alice"]]) {
+        for (const navigation of ["department", "position", "originPlanet", "department/hqPlanet"]) {
+          for (const [owner, expectedCount] of [[user, 1], [other, 0]]) {
+            aggregateBranches = [];
+            const response = await request(
+              user,
+              `${url("Spacefarers", spacefarers[owner].ID)}/${navigation}?$apply=${encodeURIComponent(apply)}`,
+            );
+
+            assert.equal(response.status, 200, JSON.stringify({ user, owner, navigation, response }));
+            const rows = response.data.value ?? [response.data];
+            assert.deepEqual(rows.map((row) => row[field]), [expectedCount]);
+            if (branchCount) {
+              assert.deepEqual(aggregateBranches.map((row) => row[field]), Array(branchCount).fill(expectedCount));
+            }
+          }
+        }
+      }
+    });
+  }
+
+  it("preserves source OR filters, target filters and aliases in programmatic navigation", async () => {
+    const service = cds.services.SpacefarerService;
+
+    for (const [user, other] of [["alice", "bob"], ["bob", "alice"]]) {
+      const own = spacefarers[user];
+      const foreign = spacefarers[other];
+      const identity = new cds.User({
+        id: user,
+        roles: ["SpacefarerUser"],
+        attr: { planet: own.originPlanet_ID },
+      });
+
+      async function departmentsFor(sourceWhere, departmentId) {
+        const query = SELECT.from({
+          ref: [{ id: service.entities.Spacefarers.name, where: sourceWhere }, "department"],
+          as: "d",
+        }).columns({ ref: ["d", "ID"] }).where({ "d.ID": departmentId });
+
+        return service.tx({ user: identity }, (tx) => tx.run(query));
+      }
+
+      const unfiltered = SELECT.from({
+        ref: [service.entities.Spacefarers.name, "department"],
+      }).columns("ID");
+      assert.deepEqual(
+        await service.tx({ user: identity }, (tx) => tx.run(unfiltered)),
+        [{ ID: own.department_ID }],
+      );
+
+      const sourceWhere = [
+        { ref: ["ID"] }, "=", { val: foreign.ID },
+        "or",
+        { ref: ["ID"] }, "=", { val: own.ID },
+      ];
+
+      assert.deepEqual(await departmentsFor(sourceWhere, own.department_ID), [{ ID: own.department_ID }]);
+      assert.deepEqual(await departmentsFor(sourceWhere, foreign.department_ID), []);
+      await assert.rejects(() => departmentsFor([
+        { ref: ["ID"] }, "=", { val: foreign.ID },
+      ], own.department_ID), { code: 404 });
+    }
   });
 
   // -------------------------------------------------------
