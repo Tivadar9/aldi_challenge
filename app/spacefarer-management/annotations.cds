@@ -150,6 +150,10 @@ annotate service.Spacefarers with {
 };
 
 annotate service.Spacefarers with {
-    suitColor @Common.Label : 'Suit Color'
+    suitColor @(
+        Common.Label : 'Suit Color',
+        Common.Text : suitColorText,
+        Common.TextArrangement : #TextOnly
+    )
 };
 

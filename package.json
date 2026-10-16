@@ -4,7 +4,7 @@
   "description": "Welcome to your new CAP project.",
   "main": "index.js",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "start": "cds-serve",
     "watch": "cds watch",
     "watch-spacefarer-management": "cds watch --open galactic.spacefarer.spacefarermanagement/index.html?sap-ui-xx-viewCache=false --livereload false"
