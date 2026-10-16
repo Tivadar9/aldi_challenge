@@ -36,6 +36,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
       originPlanet_ID: planets.earth,
       department_ID: departments.earth,
       position_ID: positions.pilot,
+      trialTimeMinutes: null,
     },
     bob: {
       ID: "bbbbbbbb-0000-4000-8000-000000000001",
@@ -47,6 +48,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
       originPlanet_ID: planets.mars,
       department_ID: departments.mars,
       position_ID: positions.engineer,
+      trialTimeMinutes: null,
     },
   };
 

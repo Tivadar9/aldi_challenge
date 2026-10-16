@@ -105,7 +105,9 @@ describe("CDS domain model: SQLite persistence", { concurrency: false }, () => {
     assert.equal(savedPosition.ID, position.ID);
     assert.equal(savedPosition.name, position.name);
     assert.equal(String(savedPosition.salary), position.salary);
-    assert.deepEqual(await db.run(SELECT.from(Spacefarer)), [spacefarer]);
+    assert.deepEqual(await db.run(SELECT.from(Spacefarer)), [
+      { ...spacefarer, trialTimeMinutes: null },
+    ]);
   });
 
   it("rejects a valid UUID referencing a nonexistent Department at the database layer", async () => {
@@ -134,7 +136,9 @@ describe("CDS domain model: SQLite persistence", { concurrency: false }, () => {
       db.run(INSERT.into(Spacefarer).entries(duplicate)),
       constraintError("UNIQUE"),
     );
-    assert.deepEqual(await db.run(SELECT.from(Spacefarer)), [spacefarer]);
+    assert.deepEqual(await db.run(SELECT.from(Spacefarer)), [
+      { ...spacefarer, trialTimeMinutes: null },
+    ]);
   });
 
   it("rejects deletion of a Planet referenced by a Department and preserves both records", async () => {
@@ -173,7 +177,12 @@ describe("CDS domain model: SQLite persistence", { concurrency: false }, () => {
     const saved = await db.run(
       SELECT.one.from(Spacefarer).where({ ID: spacefarer.ID }),
     );
-    assert.deepEqual(saved, { ...spacefarer, stardust: 0, navigationSkill: 0 });
+    assert.deepEqual(saved, {
+      ...spacefarer,
+      stardust: 0,
+      navigationSkill: 0,
+      trialTimeMinutes: null,
+    });
     assert.equal(typeof saved.stardust, "number");
     assert.equal(typeof saved.navigationSkill, "number");
   });

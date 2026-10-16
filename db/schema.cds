@@ -46,6 +46,7 @@ entity Spacefarer : cuid {
     @assert.format.message: 'Enter a valid email address';
   stardust        : Integer not null default 0 @assert.range: [0, _];
   navigationSkill : NavigationSkill not null default #BEGINNER @assert.range;
+  trialTimeMinutes : Integer @assert.range: [10, 60];
   suitColor       : SuitColor not null @mandatory @assert.range;
   originPlanet    : Association to one Planet not null @mandatory;
   department      : Association to one Department not null @mandatory;
