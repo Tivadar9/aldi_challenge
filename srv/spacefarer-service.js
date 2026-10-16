@@ -59,7 +59,7 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
       }
     });
 
-    this.before(["CREATE", "UPDATE"], Spacefarers, (req) => {
+    const validateOwnership = (req) => {
       for (const association of ["originPlanet", "department", "position"]) {
         if (Object.hasOwn(req.data, association)) {
           req.reject(
@@ -69,10 +69,25 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
         }
       }
       if (
-        (req.event === "CREATE" ||
+        (req.event === "CREATE" || req.event === "NEW" ||
           Object.hasOwn(req.data, "originPlanet_ID")) &&
         req.data.originPlanet_ID !== req.user.attr.planet
       ) {
+        req.reject(403, "Spacefarers must belong to your assigned planet");
+      }
+    };
+    this.before(["CREATE", "UPDATE"], Spacefarers, validateOwnership);
+    this.before(["NEW", "PATCH"], Spacefarers.drafts, (req) => {
+      if (req.event === "NEW" && !Object.hasOwn(req.data, "originPlanet_ID")) {
+        req.data.originPlanet_ID = req.user.attr.planet;
+      }
+      validateOwnership(req);
+    });
+    this.before(["PATCH", "CANCEL", "draftPrepare"], Spacefarers.drafts, async (req) => {
+      const draft = await cds.tx(req).run(
+        cds.ql.SELECT.one.from(req.subject).columns("originPlanet_ID"),
+      );
+      if (draft && draft.originPlanet_ID !== req.user.attr.planet) {
         req.reject(403, "Spacefarers must belong to your assigned planet");
       }
     });
@@ -86,14 +101,17 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
       }
 
       const ref = select?.from?.ref;
-      if (!Array.isArray(ref) || ref.length < 2) return;
+      if (!Array.isArray(ref) || ref.length === 0) return;
 
       const firstSegment = ref[0];
       const sourceName =
         typeof firstSegment === "string" ? firstSegment : firstSegment?.id;
 
-      // Only handle navigation originating from Spacefarers.
-      if (sourceName !== Spacefarers.name) return;
+      // Draft ownership is enforced by CAP; planet ownership also applies to
+      // drafts, including after a user's assigned planet changes.
+      const isDraftSource = sourceName === Spacefarers.drafts.name;
+      if (sourceName !== Spacefarers.name && !isDraftSource) return;
+      if (ref.length < 2 && !isDraftSource) return;
 
       // Restrict the source before navigation and aggregation. CAP may omit
       // req.params for nested SELECTs and concat branches.

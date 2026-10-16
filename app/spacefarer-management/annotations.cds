@@ -5,33 +5,13 @@ annotate service.Spacefarers with @(
         Data : [
             {
                 $Type : 'UI.DataField',
-                Label : 'name',
+                Label : 'Spacefarer Name',
                 Value : name,
             },
             {
                 $Type : 'UI.DataField',
-                Label : 'email',
+                Label : 'E-mail',
                 Value : email,
-            },
-            {
-                $Type : 'UI.DataField',
-                Label : 'stardust',
-                Value : stardust,
-            },
-            {
-                $Type : 'UI.DataField',
-                Label : 'navigationSkill',
-                Value : navigationSkill,
-            },
-            {
-                $Type : 'UI.DataField',
-                Label : 'trialTimeMinutes',
-                Value : trialTimeMinutes,
-            },
-            {
-                $Type : 'UI.DataField',
-                Label : 'suitColor',
-                Value : suitColor,
             },
         ],
     },
@@ -39,8 +19,20 @@ annotate service.Spacefarers with @(
         {
             $Type : 'UI.ReferenceFacet',
             ID : 'GeneratedFacet1',
-            Label : 'General Information',
+            Label : 'Personal Information',
             Target : '@UI.FieldGroup#GeneratedGroup',
+        },
+        {
+            $Type : 'UI.ReferenceFacet',
+            Label : 'Navigation & Training',
+            ID : 'NavigationTraining',
+            Target : '@UI.FieldGroup#NavigationTraining',
+        },
+        {
+            $Type : 'UI.ReferenceFacet',
+            Label : 'Equipment & Resources',
+            ID : 'EquipmentResources',
+            Target : '@UI.FieldGroup#EquipmentResources',
         },
     ],
     UI.LineItem : [
@@ -63,6 +55,42 @@ annotate service.Spacefarers with @(
     UI.SelectionFields : [
         suitColor,
     ],
+    UI.HeaderInfo : {
+        Title : {
+            $Type : 'UI.DataField',
+            Value : name,
+        },
+        TypeName : '',
+        TypeNamePlural : '',
+    },
+    UI.FieldGroup #NavigationTraining : {
+        $Type : 'UI.FieldGroupType',
+        Data : [
+            {
+                $Type : 'UI.DataField',
+                Value : navigationSkill,
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : trialTimeMinutes,
+                Label : 'Trial Result (minutes)',
+            },
+        ],
+    },
+    UI.FieldGroup #EquipmentResources : {
+        $Type : 'UI.FieldGroupType',
+        Data : [
+            {
+                $Type : 'UI.DataField',
+                Value : stardust,
+                Label : 'Stardust',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : suitColor,
+            },
+        ],
+    },
 );
 
 annotate service.Spacefarers with {
@@ -153,7 +181,40 @@ annotate service.Spacefarers with {
     suitColor @(
         Common.Label : 'Suit Color',
         Common.Text : suitColorText,
+        Common.TextArrangement : #TextOnly,
+        Common.ValueListWithFixedValues : true,
+        Common.ValueList : {
+            $Type : 'Common.ValueListType',
+            Label : 'Suit Color',
+            CollectionPath : 'SuitColors',
+            Parameters : [
+                {
+                    $Type : 'Common.ValueListParameterInOut',
+                    LocalDataProperty : suitColor,
+                    ValueListProperty : 'code',
+                },
+                {
+                    $Type : 'Common.ValueListParameterDisplayOnly',
+                    ValueListProperty : 'name',
+                },
+            ],
+        }
+    )
+};
+
+annotate service.SuitColors with {
+    code @(
+        Common.Text : name,
         Common.TextArrangement : #TextOnly
     )
 };
 
+annotate service.Spacefarers with {
+  name             @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+  email            @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+  navigationSkill  @Common.FieldControl: #ReadOnly;
+  trialTimeMinutes @Common.FieldControl: #ReadOnly;
+  originPlanet     @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+  department       @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+  position         @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+};

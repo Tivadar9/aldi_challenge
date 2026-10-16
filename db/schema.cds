@@ -26,6 +26,11 @@ type SuitColor : String(10) enum {
   ORANGE;
 }
 
+entity SuitColorOption {
+  key code : SuitColor;
+  name     : String(10) not null;
+}
+
 entity Department : cuid {
   name        : String(100) not null @mandatory;
   description : String(1000);

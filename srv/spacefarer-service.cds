@@ -2,11 +2,13 @@ using { galactic.spacefarer as domain } from '../db/schema';
 
 @requires: 'SpacefarerUser'
 service SpacefarerService {
+  @odata.draft.enabled
   @restrict: [{
     grant: ['READ', 'CREATE', 'UPDATE', 'DELETE'],
     to: 'SpacefarerUser',
     where: 'originPlanet.ID = $user.planet'
   }]
+  
   entity Spacefarers as projection on domain.Spacefarer {
     *,
     case suitColor
@@ -22,6 +24,9 @@ service SpacefarerService {
       else suitColor
     end as suitColorText : String(10) @readonly
   };
+
+  @readonly
+  entity SuitColors as projection on domain.SuitColorOption;
 
   @readonly
   entity Planets as projection on domain.Planet;
