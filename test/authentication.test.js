@@ -50,7 +50,7 @@ describe("SpacefarerService development authentication", { concurrency: false },
         authenticated: true,
         planet: planet.ID,
       });
-      // Record filtering is deliberately deferred: both planets remain visible.
+      // Planet reference data remains a shared read-only catalogue.
       assert.ok(Object.values(planets).every((p) => value.some((row) => row.ID === p.ID)));
       assert.equal((await fetch(`${url}/Spacefarers`, {
         headers: { authorization: authorization(user) },
