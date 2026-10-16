@@ -1,6 +1,8 @@
 const assert = require("node:assert/strict");
-const { describe, it, before, beforeEach, after } = require("node:test");
+const { describe, it, before, beforeEach, after, mock } = require("node:test");
 const cds = require("@sap/cds");
+const trial = require("../lib/wormhole-trial");
+const { runTrial } = trial;
 
 const { SELECT, INSERT, DELETE } = cds.ql;
 
@@ -120,6 +122,8 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   }
 
   before(async () => {
+    // Keep HTTP integration tests deterministic while using the real trial logic.
+    mock.method(trial, "runTrial", () => runTrial(() => 15));
     // Additional identities exist only during this test process.
     const users = cds.env.requires.auth.users;
 
@@ -144,6 +148,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   });
 
   beforeEach(async () => {
+    trial.runTrial.mock.resetCalls();
     await cds.db.tx(async (tx) => {
       // Delete in foreign-key dependency order.
       for (const entity of ["Spacefarer", "Department", "Position", "Planet"]) {
@@ -205,6 +210,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
       }
     } finally {
       await cds.db?.disconnect();
+      mock.restoreAll();
     }
   });
 
@@ -364,6 +370,10 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
 
     assert.ok(persisted);
     assert.equal(persisted.originPlanet_ID, planets.earth);
+    assert.equal(persisted.trialTimeMinutes, 15);
+    assert.equal(persisted.navigationSkill, 2);
+    assert.equal(persisted.stardust, spacefarers.alice.stardust + 30);
+    assert.equal(trial.runTrial.mock.callCount(), 1);
 
     const foreignId = "dddddddd-0000-4000-8000-000000000001";
 
@@ -381,6 +391,39 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
     assertDenied(forbidden, 403);
 
     assert.equal(await getSpacefarer(foreignId), undefined);
+  });
+
+  it("replaces client trial results and awards the bonus once when initial stardust is omitted", async () => {
+    const payload = createPayload("alice", {
+      navigationSkill: 999,
+      trialTimeMinutes: -1,
+    });
+    delete payload.stardust;
+    const created = await request("alice", "/Spacefarers", "POST", payload);
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    const saved = await getSpacefarer(newSpacefarerId);
+    assert.equal(saved.trialTimeMinutes, 15);
+    assert.equal(saved.navigationSkill, 2);
+    assert.equal(saved.stardust, 30);
+    assert.equal(created.data.trialTimeMinutes, 15);
+    assert.equal(created.data.navigationSkill, 2);
+    assert.equal(created.data.stardust, 30);
+
+    const updated = await request("alice", url("Spacefarers", saved.ID), "PATCH", {
+      name: "Renamed Pilot",
+    });
+    assert.equal(updated.status, 200);
+    assert.deepEqual(await getSpacefarer(saved.ID), { ...saved, name: "Renamed Pilot" });
+    assert.equal(trial.runTrial.mock.callCount(), 1);
+  });
+
+  it("rejects invalid initial stardust and bonus overflow without persisting a Spacefarer", async () => {
+    for (const stardust of [-1, 1.5, "10", "invalid", null, true, {}, 2147483648, 2147483647]) {
+      const response = await request("alice", "/Spacefarers", "POST",
+        createPayload("alice", { stardust }));
+      assertDenied(response, 400);
+      assert.equal(await getSpacefarer(newSpacefarerId), undefined);
+    }
   });
 
   // -------------------------------------------------------

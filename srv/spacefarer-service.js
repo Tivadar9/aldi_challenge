@@ -1,8 +1,20 @@
 const cds = require("@sap/cds");
+const { runTrial } = require("../lib/wormhole-trial");
 
 module.exports = class SpacefarerService extends cds.ApplicationService {
   async init() {
     const { Spacefarers } = this.entities;
+    this.before("CREATE", Spacefarers, (req) => {
+      const trial = runTrial();
+      const stardust = (req.data.stardust ?? 0) + trial.stardustBonus;
+      if (stardust > 2147483647) {
+        return req.reject(400, "Stardust including the trial bonus exceeds the Integer limit");
+      }
+      req.data.trialTimeMinutes = trial.trialTimeMinutes;
+      req.data.navigationSkill = trial.navigationSkill;
+      req.data.stardust = stardust;
+    });
+
     const uuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -82,6 +94,25 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
       } // Ownership verified. Let CAP process the original query.
     });
 
-    return super.init();
+    await super.init();
+
+    // CAP 10 validates before custom `before` handlers. Discard client trial
+    // results and check the initial amount before that validation can run.
+    const validate = this.handle_validations;
+    this.handle_validations = function (req) {
+      if (req.event === "CREATE" && req.target?.name === Spacefarers.name) {
+        const initial = req.data.stardust;
+        if (
+          initial !== undefined &&
+          (!Number.isInteger(initial) || initial < 0 || initial > 2147483647)
+        ) {
+          return req.reject(400, "Initial stardust must be a nonnegative Integer");
+        }
+        delete req.data.navigationSkill;
+        delete req.data.trialTimeMinutes;
+      }
+      return validate.call(this, req);
+    };
+    return this;
   }
 };
