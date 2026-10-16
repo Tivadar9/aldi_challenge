@@ -58,7 +58,10 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   const newSpacefarerId = "cccccccc-0000-4000-8000-000000000001";
 
   function url(entity, id) {
-    return id ? `/${entity}(${id})` : `/${entity}`;
+    if (!id) return `/${entity}`;
+    return entity === "Spacefarers"
+      ? `/${entity}(ID=${id},IsActiveEntity=true)`
+      : `/${entity}(${id})`;
   }
 
   async function request(user, path, method = "GET", body) {
@@ -115,6 +118,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   function createPayload(user, overrides = {}) {
     return {
       ...spacefarers[user],
+      IsActiveEntity: true,
       ID: newSpacefarerId,
       name: "New Spacefarer",
       email: "new@example.test",
@@ -160,6 +164,8 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
     aggregateBranches = [];
     trial.runTrial.mock.resetCalls();
     await cds.db.tx(async (tx) => {
+      await tx.run(DELETE.from(cds.services.SpacefarerService.entities.Spacefarers.drafts));
+      await tx.run(DELETE.from("DRAFT.DraftAdministrativeData"));
       // Delete in foreign-key dependency order.
       for (const entity of ["Spacefarer", "Department", "Position", "Planet"]) {
         await tx.run(DELETE.from(ns + entity));

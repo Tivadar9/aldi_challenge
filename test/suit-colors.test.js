@@ -71,8 +71,34 @@ describe("Suit color display texts", { concurrency: false }, () => {
     const codeAnnotations = metadata.match(/<Annotations Target="SpacefarerService.Spacefarers\/suitColor">([\s\S]*?)<\/Annotations>/)?.[1];
     assert.match(codeAnnotations, /Term="Common.Text" Path="suitColorText"/);
     assert.match(codeAnnotations, /Term="UI.TextArrangement" EnumMember="UI.TextArrangementType\/TextOnly"/);
+    assert.match(codeAnnotations, /Term="Common.ValueListWithFixedValues" Bool="true"/);
+    assert.match(codeAnnotations, /Property="CollectionPath" String="SuitColors"/);
+    assert.match(codeAnnotations, /Property="LocalDataProperty" PropertyPath="suitColor"/);
+    assert.match(codeAnnotations, /Property="ValueListProperty" String="code"/);
     assert.match(metadata, /<Annotation Term="UI.LineItem">[\s\S]*?<PropertyValue Property="Value" Path="suitColor"/);
     assert.match(metadata, /<Annotation Term="UI.SelectionFields">\s*<Collection>\s*<PropertyPath>suitColor<\/PropertyPath>/);
+  });
+
+  it("serves all nine read-only dropdown choices", async () => {
+    const choices = await request("/SuitColors?$select=code,name&$orderby=code");
+    assert.deepEqual(choices.value, Object.entries(labels)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([code, name]) => ({ code, name })));
+    assert.deepEqual(Object.keys(labels).sort(),
+      Object.keys(cds.model.definitions["galactic.spacefarer.SuitColor"].enum).sort());
+
+    for (const method of ["POST", "PATCH", "DELETE"]) {
+      const path = method === "POST" ? "/SuitColors" : "/SuitColors('RED')";
+      const response = await fetch(base + path, {
+        method,
+        headers: {
+          authorization: `Basic ${Buffer.from("alice:alice-dev").toString("base64")}`,
+          "content-type": "application/json",
+        },
+        body: method === "DELETE" ? undefined : JSON.stringify({ code: "RED", name: "Changed" }),
+      });
+      assert.equal(response.status, 405, await response.text());
+    }
   });
 
   it("calculates all nine labels in GET responses and filters by the original codes", async () => {
@@ -85,6 +111,7 @@ describe("Suit color display texts", { concurrency: false }, () => {
       const list = await request(`/Spacefarers?$filter=${encodeURIComponent(filter)}&$select=ID,suitColor,suitColorText`);
       assert.deepEqual(list.value, [{
         ID: fixture.ID,
+        IsActiveEntity: true,
         suitColor: fixture.suitColor,
         suitColorText: labels[fixture.suitColor],
       }]);
@@ -94,6 +121,7 @@ describe("Suit color display texts", { concurrency: false }, () => {
   it("accepts code-based CREATE and UPDATE and ignores client-written display text", async () => {
     const payload = {
       ...fixtures[0],
+      IsActiveEntity: true,
       ID: "cccccccc-1111-4111-8111-000000000010",
       email: "suit-color-created@example.test",
       suitColor: "BLUE",
@@ -103,7 +131,7 @@ describe("Suit color display texts", { concurrency: false }, () => {
     assert.equal(created.suitColor, "BLUE");
     assert.equal(created.suitColorText, "Blue");
 
-    const updated = await request(`/Spacefarers(${payload.ID})`, "PATCH", {
+    const updated = await request(`/Spacefarers(ID=${payload.ID},IsActiveEntity=true)`, "PATCH", {
       suitColor: "RED", suitColorText: "Client text",
     });
     assert.equal(updated.suitColor, "RED");

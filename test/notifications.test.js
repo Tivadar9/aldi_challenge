@@ -50,6 +50,7 @@ describe(
         SELECT.one.from("galactic.spacefarer.Position"),
       );
       payload = {
+        IsActiveEntity: true,
         ID: "cccccccc-0000-4000-8000-000000000001",
         name: "Test Pilot",
         email: "pilot@example.test",
@@ -72,6 +73,8 @@ describe(
       committedRows = [];
       afterCreateEmails = [];
       beforeCommitSendCounts = [];
+      await cds.db.run(DELETE.from(cds.services.SpacefarerService.entities.Spacefarers.drafts));
+      await cds.db.run(DELETE.from("DRAFT.DraftAdministrativeData"));
       await cds.db.run(DELETE.from(entity));
       mock.method(notifications, "send", async (message) => {
         sent.push(message);
