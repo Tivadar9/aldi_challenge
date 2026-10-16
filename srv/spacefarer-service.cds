@@ -1,7 +1,12 @@
 using { galactic.spacefarer as domain } from '../db/schema';
 
-@requires: 'authenticated-user'
+@requires: 'SpacefarerUser'
 service SpacefarerService {
+  @restrict: [{
+    grant: ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    to: 'SpacefarerUser',
+    where: 'originPlanet.ID = $user.planet'
+  }]
   entity Spacefarers as projection on domain.Spacefarer;
 
   @readonly
