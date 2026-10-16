@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "start": "cds-serve",
-    "watch": "cds watch"
+    "watch": "cds watch",
+    "watch-spacefarer-management": "cds watch --open galactic.spacefarer.spacefarermanagement/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "keywords": [],
   "author": "",
@@ -57,6 +58,13 @@
   },
   "devDependencies": {
     "@cap-js/sqlite": "^3.1.2",
-    "@sap/cds-dk": "^10.1.0"
-  }
+    "@sap/cds-dk": "^10.1.0",
+    "cds-plugin-ui5": "^0.17.0"
+  },
+  "workspaces": [
+    "app/*"
+  ],
+  "sapux": [
+    "app/spacefarer-management"
+  ]
 }
