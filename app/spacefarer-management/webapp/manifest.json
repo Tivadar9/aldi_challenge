@@ -102,7 +102,6 @@
           "options": {
             "settings": {
               "contextPath": "/Spacefarers",
-              "variantManagement": "Page",
               "navigation": {
                 "Spacefarers": {
                   "detail": {
@@ -114,9 +113,22 @@
                 "@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable"
+                  },
+                  "columns": {
+                    "DataField::name": {
+                      "width": "20rem"
+                    },
+                    "DataField::stardust": {
+                      "width": "10rem"
+                    },
+                    "DataField::suitColor": {
+                      "width": "12rem"
+                    }
                   }
                 }
-              }
+              },
+              "variantManagement": "None",
+              "initialLoad": "Enabled"
             }
           }
         },

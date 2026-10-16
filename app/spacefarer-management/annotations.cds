@@ -46,29 +46,22 @@ annotate service.Spacefarers with @(
     UI.LineItem : [
         {
             $Type : 'UI.DataField',
-            Label : 'name',
+            Label : 'Spacefarer',
             Value : name,
         },
         {
             $Type : 'UI.DataField',
-            Label : 'email',
-            Value : email,
-        },
-        {
-            $Type : 'UI.DataField',
-            Label : 'stardust',
+            Label : 'Stardust',
             Value : stardust,
         },
         {
             $Type : 'UI.DataField',
-            Label : 'navigationSkill',
-            Value : navigationSkill,
+            Value : suitColor,
+            Label : 'Suit Color',
         },
-        {
-            $Type : 'UI.DataField',
-            Label : 'trialTimeMinutes',
-            Value : trialTimeMinutes,
-        },
+    ],
+    UI.SelectionFields : [
+        suitColor,
     ],
 );
 
@@ -140,5 +133,23 @@ annotate service.Spacefarers with {
             },
         ],
     }
+};
+
+annotate service.Spacefarers with {
+    name @Common.Label : 'SpaceFarer'
+};
+
+annotate service.Planets with {
+    name @(
+        Common.Label : 'Origin Planet',
+        )
+};
+
+annotate service.Spacefarers with {
+    navigationSkill @Common.Label : 'Navigation Skill'
+};
+
+annotate service.Spacefarers with {
+    suitColor @Common.Label : 'Suit Color'
 };
 
