@@ -22,7 +22,13 @@ service SpacefarerService {
       when 'PURPLE' then 'Purple'
       when 'ORANGE' then 'Orange'
       else suitColor
-    end as suitColorText : String(10) @readonly
+    end as suitColorText : String(10) @readonly,
+    case navigationSkill
+      when 0 then 'Beginner'
+      when 1 then 'Intermediate'
+      when 2 then 'Expert'
+      when 3 then 'Master'
+    end as navigationSkillText : String(12) @readonly
   };
 
   @readonly

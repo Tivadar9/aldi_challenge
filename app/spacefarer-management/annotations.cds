@@ -13,6 +13,10 @@ annotate service.Spacefarers with @(
                 Label : 'E-mail',
                 Value : email,
             },
+            {
+                $Type : 'UI.DataField',
+                Value : originPlanet.name,
+            },
         ],
     },
     UI.Facets : [
@@ -21,6 +25,12 @@ annotate service.Spacefarers with @(
             ID : 'GeneratedFacet1',
             Label : 'Personal Information',
             Target : '@UI.FieldGroup#GeneratedGroup',
+        },
+        {
+            $Type : 'UI.ReferenceFacet',
+            Label : 'Employment Information',
+            ID : 'EmploymentInformation',
+            Target : '@UI.FieldGroup#EmploymentInformation',
         },
         {
             $Type : 'UI.ReferenceFacet',
@@ -88,6 +98,41 @@ annotate service.Spacefarers with @(
             {
                 $Type : 'UI.DataField',
                 Value : suitColor,
+            },
+        ],
+    },
+    UI.FieldGroup #EmploymentInformation : {
+        $Type : 'UI.FieldGroupType',
+        Data : [
+            {
+                $Type : 'UI.DataField',
+                Value : department.name,
+                Label : 'Department Name',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : department.description,
+                Label : 'Department Description',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : department.hqPlanet.name,
+                Label : 'Department HQ',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : position.name,
+                Label : 'Position Name',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : position.description,
+                Label : 'Position Description',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : position.salary,
+                Label : 'Salary',
             },
         ],
     },
@@ -174,7 +219,11 @@ annotate service.Planets with {
 };
 
 annotate service.Spacefarers with {
-    navigationSkill @Common.Label : 'Navigation Skill'
+    navigationSkill @(
+        Common.Label : 'Navigation Skill',
+        Common.Text : navigationSkillText,
+        Common.TextArrangement : #TextOnly
+    )
 };
 
 annotate service.Spacefarers with {
