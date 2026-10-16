@@ -1,5 +1,6 @@
 const cds = require("@sap/cds");
 const { runTrial } = require("../lib/wormhole-trial");
+const notifications = require("../lib/notifications");
 
 module.exports = class SpacefarerService extends cds.ApplicationService {
   async init() {
@@ -8,11 +9,32 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
       const trial = runTrial();
       const stardust = (req.data.stardust ?? 0) + trial.stardustBonus;
       if (stardust > 2147483647) {
-        return req.reject(400, "Stardust including the trial bonus exceeds the Integer limit");
+        return req.reject(
+          400,
+          "Stardust including the trial bonus exceeds the Integer limit",
+        );
       }
       req.data.trialTimeMinutes = trial.trialTimeMinutes;
       req.data.navigationSkill = trial.navigationSkill;
       req.data.stardust = stardust;
+    });
+
+    this.after("CREATE", Spacefarers, (_result, req) => {
+      const message = notifications.congratulatoryEmail(req.data);
+      const spacefarerId = req.data.ID;
+      // `after CREATE` is still inside the transaction. `succeeded` runs only after the whole transaction commits.
+      req.on("succeeded", async () => {
+        try {
+          await notifications.send(message);
+        } catch (error) {
+          cds
+            .log("notifications")
+            .error(
+              `Congratulatory email delivery failed for Spacefarer ${spacefarerId}`,
+              error,
+            );
+        }
+      });
     });
 
     const uuid =
@@ -106,7 +128,10 @@ module.exports = class SpacefarerService extends cds.ApplicationService {
           initial !== undefined &&
           (!Number.isInteger(initial) || initial < 0 || initial > 2147483647)
         ) {
-          return req.reject(400, "Initial stardust must be a nonnegative Integer");
+          return req.reject(
+            400,
+            "Initial stardust must be a nonnegative Integer",
+          );
         }
         delete req.data.navigationSkill;
         delete req.data.trialTimeMinutes;
