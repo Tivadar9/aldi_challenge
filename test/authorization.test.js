@@ -430,6 +430,33 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   // 7. UPDATE AUTHORIZATION
   // -------------------------------------------------------
 
+  for (const method of ["PATCH", "PUT"]) {
+    it(`preserves generated trial results during ${method} while allowing other changes`, async () => {
+      const created = await request("alice", "/Spacefarers", "POST", createPayload("alice"));
+      assert.equal(created.status, 201, JSON.stringify(created.data));
+      const saved = await getSpacefarer(newSpacefarerId);
+
+      for (const trialFields of [
+        { navigationSkill: 3, trialTimeMinutes: 60 },
+        { navigationSkill: null, trialTimeMinutes: null },
+        { navigationSkill: 999, trialTimeMinutes: -1 },
+      ]) {
+        const updated = await request("alice", url("Spacefarers", saved.ID), method, {
+          ...saved,
+          name: "Updated Pilot",
+          ...trialFields,
+        });
+
+        assert.equal(updated.status, 200, JSON.stringify(updated.data));
+        assert.equal(updated.data.navigationSkill, saved.navigationSkill);
+        assert.equal(updated.data.trialTimeMinutes, saved.trialTimeMinutes);
+        await assertUnchanged(saved.ID, { ...saved, name: "Updated Pilot" });
+      }
+
+      assert.equal(trial.runTrial.mock.callCount(), 1);
+    });
+  }
+
   it("allows own updates but rejects foreign updates and planet transfers", async () => {
     const own = spacefarers.alice;
     const foreign = spacefarers.bob;

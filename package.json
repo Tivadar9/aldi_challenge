@@ -20,24 +20,22 @@
           "users": {
             "alice": {
               "password": "alice-dev",
-              "roles": ["SpacefarerUser"],
+              "roles": [
+                "SpacefarerUser"
+              ],
               "attr": {
                 "planet": "0c3a9718-2f35-4cc2-8b49-5c289d88dd01"
               }
             },
             "bob": {
               "password": "bob-dev",
-              "roles": ["SpacefarerUser"],
+              "roles": [
+                "SpacefarerUser"
+              ],
               "attr": {
                 "planet": "0c3a9718-2f35-4cc2-8b49-5c289d88dd02"
               }
             },
-            "carol": false,
-            "dave": false,
-            "erin": false,
-            "fred": false,
-            "me": false,
-            "yves": false,
             "*": false
           }
         }
