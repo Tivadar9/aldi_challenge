@@ -1,82 +1,85 @@
-# Galactic Spacefarer Adventure
+﻿# Galactic Spacefarer Adventure
 
-A full-stack SAP CAP application built for an SAP BTP developer technical assessment. It models spacefarers and their departments, positions, and planets, and exposes an OData V4 API. A SAP Fiori Elements frontend and creation-event notifications are planned.
+## Project overview
+
+A Spacefarer management application developed for an SAP BTP Full Stack Developer technical assessment. It combines a CAP service with a Fiori interface for browsing Spacefarers and editing their stardust balances and spacesuit colors, with access restricted to the user's assigned planet.
 
 ## Tech stack
 
-- **Backend:** SAP CAP (Node.js), CDS, OData V4
-- **Database:** SQLite (local development)
-- **Frontend (planned):** SAP Fiori Elements — List Report and Object Page
-- **Testing:** Node.js built-in test runner
+- SAP CAP 10, CDS, Node.js, and OData V4
+- SQLite for local development
+- SAPUI5 1.153.0 and SAP Fiori Elements List Report / Object Page
+- Node.js built-in test runner
 
-## Project structure
+## Features
 
-| Path    | Purpose                                           |
-| ------- | ------------------------------------------------- |
-| `db/`   | Domain model and seed data                        |
-| `srv/`  | OData service and authorization                   |
-| `app/`  | Fiori application (planned)                       |
-| `test/` | Database, authentication, and authorization tests |
-| `docs/` | Architecture documentation                        |
+- Spacefarer CRUD API with relationships to planets, departments, and positions; required fields, unique email addresses, and input validation.
+- Mock authentication and backend-enforced planet isolation, including collection reads, individual records, writes, and drafts.
+- A simulated wormhole trial that assigns navigation skill and adds starter stardust when a Spacefarer is created.
+- Congratulatory notifications after successful creation commits, with console logging by default and optional SMTP delivery through Nodemailer.
+- An annotation-driven List Report showing names, stardust, and suit colors, with a suit-color filter and standard Fiori table sorting and incremental data loading.
+- An Object Page with draft-based editing of stardust and suit color, plus read-only trial results.
 
-## Run locally
+## Getting started
 
-**Prerequisites:** Node.js 22+ and npm. Install the project dependencies, then start CAP:
+**Prerequisites:** Node.js 24 LTS, npm, and a modern browser. Internet access is required to install dependencies and load SAPUI5 from `sapui5.hana.ondemand.com`.
+
+From the repository root:
 
 ```bash
 npm ci
-npm run watch
+npm start
 ```
 
-The API is available at `http://localhost:4004/odata/v4/spacefarer`.
+The root installation includes the Fiori workspace and local development tools; no separate frontend installation is needed.
 
-Local development uses **mocked Basic authentication**, with users configured in the development profile of `package.json`:
+- **Fiori UI:** http://localhost:4004/galactic.spacefarer.spacefarermanagement/index.html
+- **OData service:** http://localhost:4004/odata/v4/spacefarer/
 
-| User    | Password    | Assigned planet  |
-| ------- | ----------- | ---------------- |
-| `alice` | `alice-dev` | Earth (Planet X) |
-| `bob`   | `bob-dev`   | Mars (Planet Y)  |
+Use these intentionally public mock credentials when prompted for Basic authentication:
 
-Example (PowerShell):
+| User    | Password    | Assigned planet |
+| ------- | ----------- | --------------- |
+| `alice` | `alice-dev` | Earth           |
+| `bob`   | `bob-dev`   | Mars            |
 
-```powershell
-curl.exe --user alice:alice-dev http://localhost:4004/odata/v4/spacefarer/Spacefarers
-```
+SQLite runs in memory and automatically loads the CSV files in `db/data/` at startup. No database deployment or manual seeding is required. Changes are lost when the server restarts.
 
-These are **development-only credentials**. Production deployment requires a properly configured identity provider and trusted user attributes.
+For automatic server restarts during development, use `npm run watch` instead of `npm start`.
 
-## Authorization
+The Fiori Object Page supports editing existing Spacefarers' stardust balances and suit colors through the draft workflow. New Spacefarers can be created through the OData API by providing all required fields.
 
-`SpacefarerService` requires authenticated users with the `SpacefarerUser` role. Spacefarer records are restricted to the user's assigned origin planet using CAP's `@restrict` rules and additional service guards. These also prevent unauthorized creation, ownership changes, and access through navigation paths.
+### Optional SMTP Configuration
 
-Planets, Departments, and Positions are shared **read-only reference data**; unlike Spacefarers, they are not isolated by planet. Security rules apply to API access, not to direct database access by trusted application code.
+By default, congratulatory notifications are logged to the console without sending emails.
 
-The navigation guard follows nested `SELECT.from.SELECT` wrappers and adds the
-planet condition to the Spacefarer source segment before navigation or aggregation.
-This works when CAP omits `req.params`, as it does for chained `$apply` aggregates
-and `concat` branches. These aggregate counts through a foreign Spacefarer return
-`0`; ordinary keyed navigation to a foreign Spacefarer returns `404`. The guard preserves
-existing segment filters as `(existing) AND (planet)`, together with target
-filters and source aliases.
-This follows SAP's [requirement to preserve authorization filters when modifying queries](https://cap.cloud.sap/docs/guides/security/authorization#instance-based-access-control).
+To enable SMTP delivery, copy .env.example to .env, set EMAIL_DELIVERY_MODE=smtp, and configure the provided SMTP environment variables.
 
-The guard covers source shapes emitted by the current CAP OData adapter and
-exposed association graph. New associations, projections or custom queries with
-joins/unions require another authorization review; this is not a general CQN
-authorization engine.
+Both STARTTLS (typically port 587) and implicit TLS (typically port 465) are supported. Credentials are excluded from Git.
 
-## Tests
+SMTP delivery is optional; the application works without an external email provider.
+
+## Testing
 
 ```bash
 npm test
 ```
 
-Tests cover SQLite constraints and defaults, authentication, and planet-based authorization (including direct reads, writes, navigation, and attempted cross-planet access). They use isolated local test databases and do not require a separately running server.
+Automated tests cover database constraints, authentication, planet-based authorization, OData CRUD operations, wormhole trial calculations, notifications, SMTP configuration, draft editing, and suit-color metadata.
 
-Navigation regressions exercise both users across the department, position,
-origin planet and department headquarters paths, including two/three-stage
-aggregates and both `concat` branches. Application-service CQN tests exercise
-navigation without URL parameters and verify preservation of OR source filters,
-target filters and source aliases.
+Integration tests use CAP HTTP servers with in-memory SQLite and reset fixtures between scenarios. SMTP delivery is mocked; no real emails are sent during testing.
 
-For implementation details, see `db/schema.cds`, `srv/`, and the integration tests in `test/`.
+Browser-based Fiori interactions are verified manually.
+
+## Implementation notes
+
+- **Access control:** CAP restrictions and service guards enforce the authenticated user's planet on the backend and prevent ownership transfers. Planets, departments, positions, and suit-color choices are shared read-only reference data.
+- **Trial and stardust:** Each new Spacefarer completes a simulated 10–60-minute navigation trial. Their completion time determines their initial navigation skill and starter stardust bonus. Trial results are generated server-side and remain unchanged during subsequent edits.
+- **Notifications:** The after-create handler delivers through the configured mode only after the transaction commits. Draft saves trigger it only when creating a new active record; editing an existing record does not send another welcome email. SMTP errors are logged without undoing the committed creation. Delivery is best effort, with no automatic retry.
+- **Scope:** This is a local assessment application. Mock credentials apply only in development; production identity integration and BTP deployment configuration are not supplied. The UI depends on the external SAPUI5 CDN.
+
+## AI Usage Disclosure
+
+AI-assisted tools were used to generate the README and automated tests, as well as to assist with parts of the implementation.
+
+All AI-generated code was manually reviewed and validated before being included in the project. Responsibility for the final implementation and technical decisions remains with the author.
