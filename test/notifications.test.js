@@ -9,6 +9,7 @@ const {
   mock,
 } = require("node:test");
 const cds = require("@sap/cds");
+const nodemailer = require("nodemailer");
 const notifications = require("../lib/notifications");
 const { SELECT, DELETE } = cds.ql;
 
@@ -169,21 +170,48 @@ describe(
       assert.deepEqual(sent, []);
     });
 
-    it("logs delivery failures while keeping the committed row and successful response", async () => {
+    it("sends through SMTP after commit and logs SMTP failures without losing the committed row", async () => {
+      const settings = {
+        EMAIL_DELIVERY_MODE: "smtp", SMTP_HOST: "smtp.example.test", SMTP_PORT: "587",
+        SMTP_SECURE: "false", SMTP_REQUIRE_TLS: "true", SMTP_USERNAME: "test-user",
+        SMTP_PASSWORD: "test-password", SMTP_FROM: "welcome@example.test",
+      };
+      const previous = Object.fromEntries(Object.keys(settings).map(key => [key, process.env[key]]));
       const failure = new Error("Fake provider unavailable");
-      notifications.send.mock.mockImplementation(async () => {
-        throw failure;
+      const sendMail = mock.fn(async (message) => {
+        sent.push(message);
+        committedRows.push(await cds.db.tx({}, (tx) =>
+          tx.run(SELECT.one.from(entity).where({ email: message.to }))));
       });
+      mock.method(nodemailer, "createTransport", () => ({ sendMail }));
+      notifications.send.mock.restore();
       const errors = mock.method(cds.log("notifications"), "error", () => {});
-      const response = await request("/Spacefarers", payload);
-      assert.equal(response.status, 201, JSON.stringify(response.data));
-      assert.ok(
-        await cds.db.run(SELECT.one.from(entity).where({ ID: payload.ID })),
-      );
-      assert.equal(notifications.send.mock.callCount(), 1);
-      assert.equal(errors.mock.callCount(), 1);
-      assert.ok(errors.mock.calls[0].arguments[0].includes(payload.ID));
-      assert.equal(errors.mock.calls[0].arguments[1], failure);
+      Object.assign(process.env, settings);
+      try {
+        const response = await request("/Spacefarers", payload);
+        assert.equal(response.status, 201, JSON.stringify(response.data));
+        assert.deepEqual(beforeCommitSendCounts, [0]);
+        assert.equal(sendMail.mock.callCount(), 1);
+        assert.equal(committedRows[0].ID, payload.ID);
+        assert.deepEqual(sent[0], {
+          ...notifications.congratulatoryEmail(committedRows[0]), from: settings.SMTP_FROM,
+        });
+
+        sendMail.mock.mockImplementation(async () => { throw failure; });
+        const second = { ...payload, ID: "cccccccc-0000-4000-8000-000000000002", email: "second@example.test" };
+        const failedDelivery = await request("/Spacefarers", second);
+        assert.equal(failedDelivery.status, 201, JSON.stringify(failedDelivery.data));
+        assert.ok(await cds.db.run(SELECT.one.from(entity).where({ ID: second.ID })));
+        assert.equal(sendMail.mock.callCount(), 2);
+        assert.equal(errors.mock.callCount(), 1);
+        assert.ok(errors.mock.calls[0].arguments[0].includes(second.ID));
+        assert.equal(errors.mock.calls[0].arguments[1], failure);
+      } finally {
+        for (const [key, value] of Object.entries(previous)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+      }
     });
   },
 );

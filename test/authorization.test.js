@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { describe, it, before, beforeEach, after, mock } = require("node:test");
 const cds = require("@sap/cds");
 const trial = require("../lib/wormhole-trial");
+const notifications = require("../lib/notifications");
 const { runTrial } = trial;
 
 const { SELECT, INSERT, DELETE } = cds.ql;
@@ -129,6 +130,7 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
   before(async () => {
     // Keep HTTP integration tests deterministic while using the real trial logic.
     mock.method(trial, "runTrial", () => runTrial(() => 15));
+    mock.method(notifications, "send", async () => {});
     // Additional identities exist only during this test process.
     const users = cds.env.requires.auth.users;
 
