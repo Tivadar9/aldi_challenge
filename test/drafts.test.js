@@ -134,6 +134,69 @@ describe("Spacefarer draft integration", { concurrency: false }, () => {
     assert.deepEqual(sent, []);
   });
 
+  it("exposes name-based employment value helps on the foreign-key form fields", async () => {
+    const metadata = expect(await request("alice", "/$metadata"), 200);
+    const annotations = (target) => metadata.match(new RegExp(
+      `<Annotations Target="SpacefarerService\\.${target}">([\\s\\S]*?)</Annotations>`,
+    ))?.[1];
+    const spacefarer = annotations("Spacefarers");
+    const employment = spacefarer.match(/<Annotation Term="UI.FieldGroup" Qualifier="EmploymentInformation">([\s\S]*?)<\/Annotation>/)?.[1];
+    for (const [association, collection] of [["department", "Departments"], ["position", "Positions"]]) {
+      const field = annotations(`Spacefarers/${association}_ID`);
+      assert.match(employment, new RegExp(`Property="Value" Path="${association}_ID"`));
+      assert.match(field, new RegExp(`Term="Common.Text" Path="${association}/name"`));
+      assert.match(field, /EnumMember="UI.TextArrangementType\/TextOnly"/);
+      assert.match(field, new RegExp(`Property="CollectionPath" String="${collection}"`));
+      assert.match(field, /Type="Common.ValueListParameterInOut"/);
+      assert.match(field, new RegExp(`Property="LocalDataProperty" PropertyPath="${association}_ID"`));
+      assert.match(field, /Property="ValueListProperty" String="ID"/);
+      assert.match(field, /Property="ValueListProperty" String="name"/);
+      assert.match(field, /<Path>HasActiveEntity<\/Path>\s*<Int>1<\/Int>\s*<Int>7<\/Int>/);
+      assert.match(spacefarer, new RegExp(`<PropertyPath>${association}_ID</PropertyPath>`));
+      assert.match(spacefarer, new RegExp(`<NavigationPropertyPath>${association}</NavigationPropertyPath>`));
+      assert.match(annotations(`${collection}/ID`), /Term="Common.Text" Path="name"/);
+      assert.equal(cds.services.SpacefarerService.entities[collection]["@readonly"], true);
+    }
+    for (const path of ["department/name", "department/description", "department/hqPlanet/name", "position/name", "position/description", "position/salary"]) {
+      assert.ok(employment.includes(`Path="${path}"`), path);
+    }
+  });
+
+  it("fills employment foreign keys on an empty draft before prepare and activation", async () => {
+    expect(await request("alice", "/Spacefarers", "POST", { ID: newId }), 201);
+    expect(await request("alice", draft(newId), "PATCH", {
+      name: "Employment Selector Pilot", email: "employment-selector@example.test", suitColor: "BLUE",
+    }), 200);
+    const missingBoth = expect(await activate("alice"), 400).error;
+    assert.deepEqual(missingBoth.details.map(({ code, target }) => ({ code, target })), [
+      { code: "ASSERT_MANDATORY", target: "in/department_ID" },
+      { code: "ASSERT_MANDATORY", target: "in/position_ID" },
+    ]);
+    expect(await request("alice", draft(newId), "PATCH", { department_ID: fixtures.alice.department_ID }), 200);
+    const missingPosition = expect(await activate("alice"), 400).error;
+    assert.equal(missingPosition.code, "ASSERT_MANDATORY");
+    assert.equal(missingPosition.target, "in/position_ID");
+    assert.equal(trial.runTrial.mock.callCount(), 0);
+    assert.deepEqual(sent, []);
+    expect(await request("alice", draft(newId), "PATCH", { position_ID: fixtures.alice.position_ID }), 200);
+    const filled = expect(await request("alice", `${draft(newId)}?$expand=department,position`), 200);
+    assert.equal(filled.department_ID, fixtures.alice.department_ID);
+    assert.equal(filled.position_ID, fixtures.alice.position_ID);
+    assert.equal(filled.department.ID, filled.department_ID);
+    assert.equal(filled.position.ID, filled.position_ID);
+    assert.ok(filled.department.name);
+    assert.ok(filled.position.name);
+    expect(await request("alice", action(newId, "draftPrepare"), "POST", {}), 200);
+    const saved = expect(await activate("alice"), 201);
+    assert.equal(saved.IsActiveEntity, true);
+    const row = await readActive(newId);
+    assert.equal(row.department_ID, filled.department_ID);
+    assert.equal(row.position_ID, filled.position_ID);
+    assert.equal(await readDraft(newId), undefined);
+    assert.equal(trial.runTrial.mock.callCount(), 1);
+    assert.equal(sent.length, 1);
+  });
+
   it("edits and activates an existing record without repeating the trial or notification", async () => {
     const id = fixtures.alice.ID;
     const edited = expect(await request("alice", `${active(id)}/SpacefarerService.draftEdit`, "POST", { PreserveChanges: true }), 201);

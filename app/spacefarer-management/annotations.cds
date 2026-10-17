@@ -106,6 +106,11 @@ annotate service.Spacefarers with @(
         Data : [
             {
                 $Type : 'UI.DataField',
+                Value : department_ID,
+                Label : 'Department',
+            },
+            {
+                $Type : 'UI.DataField',
                 Value : department.name,
                 Label : 'Department Name',
             },
@@ -118,6 +123,11 @@ annotate service.Spacefarers with @(
                 $Type : 'UI.DataField',
                 Value : department.hqPlanet.name,
                 Label : 'Department HQ',
+            },
+            {
+                $Type : 'UI.DataField',
+                Value : position_ID,
+                Label : 'Position',
             },
             {
                 $Type : 'UI.DataField',
@@ -161,7 +171,12 @@ annotate service.Spacefarers with {
 };
 
 annotate service.Spacefarers with {
-    department @Common.ValueList : {
+    // CAP propagates managed-association annotations to department_ID.
+    department @(
+      Common.Label : 'Department',
+      Common.Text : department.name,
+      Common.TextArrangement : #TextOnly,
+      Common.ValueList : {
         $Type : 'Common.ValueListType',
         CollectionPath : 'Departments',
         Parameters : [
@@ -179,11 +194,16 @@ annotate service.Spacefarers with {
                 ValueListProperty : 'description',
             },
         ],
-    }
+      }
+    )
 };
 
 annotate service.Spacefarers with {
-    position @Common.ValueList : {
+    position @(
+      Common.Label : 'Position',
+      Common.Text : position.name,
+      Common.TextArrangement : #TextOnly,
+      Common.ValueList : {
         $Type : 'Common.ValueListType',
         CollectionPath : 'Positions',
         Parameters : [
@@ -205,7 +225,27 @@ annotate service.Spacefarers with {
                 ValueListProperty : 'salary',
             },
         ],
+      }
+    )
+};
+
+annotate service.Spacefarers with @(
+    Common.SideEffects #Department : {
+        SourceProperties : [department_ID],
+        TargetEntities : [department],
+    },
+    Common.SideEffects #Position : {
+        SourceProperties : [position_ID],
+        TargetEntities : [position],
     }
+);
+
+annotate service.Departments with {
+    ID @(Common.Text : name, Common.TextArrangement : #TextOnly);
+};
+
+annotate service.Positions with {
+    ID @(Common.Text : name, Common.TextArrangement : #TextOnly);
 };
 
 annotate service.Spacefarers with {
@@ -264,6 +304,6 @@ annotate service.Spacefarers with {
   navigationSkill  @Common.FieldControl: #ReadOnly;
   trialTimeMinutes @Common.FieldControl: #ReadOnly;
   originPlanet     @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
-  department       @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
-  position         @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 3] } };
+  department       @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 7] } };
+  position         @Common.FieldControl: { $edmJson: { $If: [{ $Path: 'HasActiveEntity' }, 1, 7] } };
 };

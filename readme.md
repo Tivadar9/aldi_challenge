@@ -47,7 +47,7 @@ SQLite runs in memory and automatically loads the CSV files in `db/data/` at sta
 
 For automatic server restarts during development, use `npm run watch` instead of `npm start`.
 
-The Fiori Object Page supports editing existing Spacefarers' stardust balances and suit colors through the draft workflow. New Spacefarers can be created through the OData API by providing all required fields.
+The Fiori Object Page supports creating Spacefarers through the draft workflow, with Department and Position value helps that display names and save the selected UUID foreign keys. Employment selections are editable only during creation; associated descriptions, headquarters, and salary remain read-only. Existing Spacefarers' stardust balances and suit colors can be edited through the same draft workflow.
 
 ### Optional SMTP Configuration
 
@@ -65,7 +65,7 @@ SMTP delivery is optional; the application works without an external email provi
 npm test
 ```
 
-Automated tests cover database constraints, authentication, planet-based authorization, OData CRUD operations, wormhole trial calculations, notifications, SMTP configuration, draft editing, and suit-color metadata.
+Automated tests cover database constraints, authentication, planet-based authorization, OData CRUD operations, wormhole trial calculations, notifications, SMTP configuration, draft creation and editing, employment value-help metadata, and suit-color metadata.
 
 Integration tests use CAP HTTP servers with in-memory SQLite and reset fixtures between scenarios. SMTP delivery is mocked; no real emails are sent during testing.
 
