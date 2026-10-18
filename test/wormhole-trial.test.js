@@ -1,10 +1,6 @@
 const assert = require("node:assert/strict");
 const { describe, it } = require("node:test");
-const {
-  classifyTrialDuration,
-  generateTrialDuration,
-  runTrial,
-} = require("../lib/wormhole-trial");
+const { classifyTrialDuration, runTrial } = require("../lib/wormhole-trial");
 
 describe("Wormhole trial classification", () => {
   for (const [duration, navigationSkill, stardustBonus] of [
