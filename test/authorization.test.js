@@ -515,13 +515,22 @@ describe("Spacefarer planet authorization", { concurrency: false }, () => {
     assert.equal(trial.runTrial.mock.callCount(), 1);
   });
 
-  it("rejects invalid initial stardust and bonus overflow without persisting a Spacefarer", async () => {
-    for (const stardust of [-1, 1.5, "10", "invalid", null, true, {}, 2147483648, 2147483647]) {
+  it("rejects invalid initial stardust before running the trial or persisting a Spacefarer", async () => {
+    for (const stardust of [-1, 1.5, "10", "invalid", null, true, {}, 2147483648]) {
       const response = await request("alice", "/Spacefarers", "POST",
         createPayload("alice", { stardust }));
       assertDenied(response, 400);
       assert.equal(await getSpacefarer(newSpacefarerId), undefined);
+      assert.equal(trial.runTrial.mock.callCount(), 0);
     }
+  });
+
+  it("rejects trial bonus overflow without persisting a Spacefarer", async () => {
+    const response = await request("alice", "/Spacefarers", "POST",
+      createPayload("alice", { stardust: 2147483647 }));
+    assertDenied(response, 400);
+    assert.equal(await getSpacefarer(newSpacefarerId), undefined);
+    assert.equal(trial.runTrial.mock.callCount(), 1);
   });
 
   // -------------------------------------------------------
