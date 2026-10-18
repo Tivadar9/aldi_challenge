@@ -115,6 +115,15 @@
                     "type": "ResponsiveTable"
                   },
                   "columns": {
+                    "DataField::originPlanet_ID": {
+                      "availability": "Hidden"
+                    },
+                    "DataField::suitColorText": {
+                      "availability": "Hidden"
+                    },
+                    "DataField::navigationSkillText": {
+                      "availability": "Hidden"
+                    },
                     "DataField::name": {
                       "width": "20rem"
                     },

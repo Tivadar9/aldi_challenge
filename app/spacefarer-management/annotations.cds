@@ -1,5 +1,29 @@
 using SpacefarerService as service from '../../srv/spacefarer-service';
 annotate service.Spacefarers with @(
+    // Responsive-table grouping uses the same eligible properties as sorting.
+    Capabilities.SortRestrictions.NonSortableProperties : [
+        ID, email, originPlanet_ID, department_ID, position_ID
+    ],
+    Capabilities.NavigationRestrictions.RestrictedProperties : [
+        { NavigationProperty : originPlanet, SortRestrictions : { Sortable : false } },
+        {
+            NavigationProperty : department,
+            SortRestrictions : {
+                NonSortableProperties : [department.ID, department.description, department.hqPlanet_ID]
+            }
+        },
+        {
+            NavigationProperty : position,
+            SortRestrictions : {
+                NonSortableProperties : [position.ID, position.description, position.salary]
+            }
+        }
+    ],
+    // Group headers need category text even when its column is not displayed.
+    UI.PresentationVariant : {
+        Visualizations : ['@UI.LineItem'],
+        RequestAtLeast : [department.name, position.name, navigationSkill, navigationSkillText]
+    },
     UI.FieldGroup #GeneratedGroup : {
         $Type : 'UI.FieldGroupType',
         Data : [
@@ -83,7 +107,7 @@ annotate service.Spacefarers with @(
             {
                 $Type : 'UI.DataField',
                 Value : trialTimeMinutes,
-                Label : 'Trial Result (minutes)',
+                Label : 'Trial Duration (minutes)',
             },
         ],
     },
@@ -242,14 +266,24 @@ annotate service.Spacefarers with @(
 
 annotate service.Departments with {
     ID @(Common.Text : name, Common.TextArrangement : #TextOnly);
+    name @Common.Label : 'Department';
 };
 
 annotate service.Positions with {
     ID @(Common.Text : name, Common.TextArrangement : #TextOnly);
+    name @Common.Label : 'Position';
 };
 
 annotate service.Spacefarers with {
-    name @Common.Label : 'SpaceFarer'
+    ID @UI.Hidden;
+    name @Common.Label : 'Spacefarer';
+    email @Common.Label : 'E-mail';
+    stardust @Common.Label : 'Stardust';
+    originPlanet @Common.Label : 'Origin Planet';
+    trialTimeMinutes @Common.Label : 'Trial Duration (minutes)';
+    // TextOnly columns sort and group by their text property in Fiori V4.
+    navigationSkillText @Common.Label : 'Navigation Skill';
+    suitColorText @Common.Label : 'Suit Color';
 };
 
 annotate service.Planets with {
